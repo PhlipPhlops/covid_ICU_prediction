@@ -1,0 +1,87 @@
+06-08-2020
+
+Tomorrow I'll attempt casting this data to GloVe vector, but first I need to match the notes with their outcomes and clean up the notes columns.
+We know that there is a one-to-many relationship from the Outcomes table to the Notes table, related by their 'Patient' column and 'Patient EMPI Nbr' column respectively.
+Since we're not concerning ourself with time-sequenced models at the moment, we can ignore the date columns after removing the biased entries (whose Result Verification Day
+entries are within ~7 days of the Outcome date). In fact, we can ignore most columns for now.
+
+Lets start with this:
+- Migrate Notes over into a new CSV that only contains: [index, Patient EMPI Nbr, Document Name, Result Verification Day, Note Result] 
+-#- Done in data_modification/remove_unused_columns.py
+Great! Now the file is a bit quicker to work with an not crammed with noisy numbers.
+
+06-09-2020
+
+For whatever reason, the pd.merge() commands are not doing what I want them to. I'm going to try pd.groupby() to
+attempt to join into a row any existing note that shares a Patient EMPI Nbr.
+
+groupby is not helpful here. Lets think about this desired result. Eventually I'm going to want to feed in the data
+to a keras model in the form: (train_x, train_y), (test_x, test_y).
+First lets load up the outcomes file so we can use its unique Patient column as keys to query the notes file.
+DROP BIASED ROWS
+- For every row in outcomes
+	- find their corresponding rows in notes
+	- For each row in this collection of notes
+		- if Result Verification Day is within 7 days of the outcome Time column
+			- drop the row (by index).
+
+# For the purposes of this, biased rows are any row in Covid_Unstructured_Notes.csv with a Result Verification Day
+# within 7 days of its corresponding 'Time' recorded in the Outcome_ICU.csv
+import pandas as pd
+
+FOLDER_PATH = '../Covid_Data/'
+COVID_UNSTRUCTURED_NOTES_THINNED_PATH = FOLDER_PATH + 'Covid_Unstructured_Notes_Thinned.csv'
+OUTCOMES_ICU_PATH = FOLDER_PATH + 'Outcome_ICU.csv'
+
+notes = pd.read_csv(COVID_UNSTRUCTURED_NOTES_THINNED_PATH)
+outcomes = pd.read_csv(OUTCOMES_ICU_PATH)
+
+for outcome_index, outcome_row in outcomes.iterrows():
+    patient_key = outcome_row['Patient']
+    corresponding_notes = notes.loc[notes['Patient EMPI Nbr'] == patient_key]
+    print(corresponding_notes
+
+------------------------------pCOVID DATA EXCERPT -------------------------
+		       
+>>> notes.head()
+              Patient Name  Patient EMPI Nbr  Patient TEC MRN  \
+0  ABELLERA, ELIGIO QUIROS           2673698         91458935
+1  ABELLERA, ELIGIO QUIROS           2673698         91458935
+2  ABELLERA, ELIGIO QUIROS           2673698         91458935
+3  ABELLERA, ELIGIO QUIROS           2673698         91458935
+4  ABELLERA, ELIGIO QUIROS           2673698         91458935
+
+   Patient EUH MRN  Patient ECLH MRN  Patient EJC MRN  Patient SJH MRN  \
+0        1167803.0         1510106.0              NaN        2089165.0
+1        1167803.0         1510106.0              NaN        2089165.0
+2        1167803.0         1510106.0              NaN        2089165.0
+3        1167803.0         1510106.0              NaN        2089165.0
+4        1167803.0         1510106.0              NaN        2089165.0
+
+                   Healthcare Entity  Document Name Result Verification Day  \
+0  Saint Josephs Hospital of Atlanta  Consultations              03/25/2020
+1  Saint Josephs Hospital of Atlanta  Consultations              03/25/2020
+2  Saint Josephs Hospital of Atlanta  Consultations              03/25/2020
+3  Saint Josephs Hospital of Atlanta  Consultations              03/25/2020
+4  Saint Josephs Hospital of Atlanta  Consultations              03/25/2020
+
+                                         Note Result  Metrics  \
+0  1. Left cataract surgery in 2008.\n\n\n\n2. AC...      NaN
+1  3/24/2020 09:24 Weight in kg 65 kg \n\n\n\n Ty...      NaN
+2  Active Inpt Meds \nascorbic acid (Vitamin C) 1...      NaN
+3  Active Problems - As of 03/25/2020 07:24 \n \n...      NaN
+4                                              alert      NaN
+
+   # Powernote Results (unfiltered)
+0                                 1
+1                                 1
+2                                 1
+3                                 1
+4                                 1
+>>> outcomes.head()
+   Unnamed: 0    Patient Admission_status     Time
+0           0   98845897   Self Isolation      NaN
+1           1   28539715   Self Isolation      NaN
+2           2   21134371   Self Isolation      NaN
+3           3  102469382     Hospitalized  3/16/20
+4           4  104576290     Hospitalized  3/18/20
