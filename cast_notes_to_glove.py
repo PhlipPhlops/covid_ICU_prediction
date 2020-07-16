@@ -16,11 +16,14 @@ punctuation = "!\"#$%'()*+,-./:;<=>?@[\]^_`{|}~"
 empty_replacement = " " * len(punctuation)
 transtable = maketrans(punctuation, empty_replacement)
 
+# Indices of empty notes to drop
+indices_of_empty = []
+
 for index, row in notes.iterrows():
     note_as_glove = []
     if type(row['Note Result']) != str:
         # Some notes aren't strings as expected
-        print("Not a strin; index: {}, data: {}".format(index, row['Note Result']))
+        indices_of_empty.append(index)
         row['Note Result'] = ""
     # Quickest way to remove punctuation
     note = str.translate(row['Note Result'], transtable)
@@ -31,8 +34,13 @@ for index, row in notes.iterrows():
     glove_notes['Note in GloVe'].append(note_as_glove)
     glove_notes['GloVe Avg'].append(np.average(note_as_glove, axis=0))
 
-# Save to file
+
 glove_frame = pd.DataFrame(data=glove_notes)
 merged = notes.merge(glove_frame, left_index=True, right_index=True)
+
+# Drop rows with empty notes and re-sequence the index
+print("Dropping {} rows of empty notes".format(len(indices_of_empty)))
+merged = merged.drop(indices_of_empty).reset_index()
+
 merged.to_csv('./Covid_Data/Notes_w_GloVe_and_Outcome.csv')
 
