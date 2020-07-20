@@ -1,5 +1,5 @@
 import pandas as pd
-import load_glove as lg
+import ../load_glove as lg
 import numpy as np
 from string import maketrans
 
@@ -7,7 +7,7 @@ vector_map = lg.vector_map
 GLOVEd = 50
 print("Assuming Glove d is " + str(GLOVEd))
 
-notes = pd.read_csv('./Covid_Data/Covid_Notes_with_Outcomes.csv')
+notes = pd.read_csv('../Covid_Data/CNwO_minus_3day_bias.csv')
 
 glove_notes = {'Note in GloVe': [], 'GloVe Avg': []}
 
