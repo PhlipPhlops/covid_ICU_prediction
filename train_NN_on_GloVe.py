@@ -65,4 +65,7 @@ kfold = KFold(n_splits=KFOLD_SPLITS)
 results = cross_val_score(estimator, X, onehot_Y, cv=kfold)
 print("Baseline: %.2f%% (%.2f%%)" % (results.mean()*100, results.std()*100))
 
-# Testing accuracy on frist run: 55.41$ (5.07% stddev)
+## 50 inputs -> [64 hidden nodes] -> 3 outputs
+# Testing accuracy on first run: 55.41$ (5.07% stddev)
+## 50 inputs -> [ 40 hn -> 30 hn ] -> 3 outputs
+# Testing accuracy: 54.87% (5.59% stdev)
