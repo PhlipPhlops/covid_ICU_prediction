@@ -1,46 +1,89 @@
+print("Verification print")
+import sys
+sys.path.insert(1, '/home/pkinne2/CovidICUPrediction')
 import pandas as pd
-import ../load_glove as lg
 import numpy as np
-from string import maketrans
+# import load_glove as lg
 
 vector_map = lg.vector_map
 GLOVEd = 50
-print("Assuming Glove d is " + str(GLOVEd))
+print("Assuming GloVe dimensionality is " + str(GLOVEd))
 
-notes = pd.read_csv('../Covid_Data/CNwO_minus_3day_bias.csv')
+notes = pd.read_csv('./Covid_Data/Concatenated_Notes.csv')
 
-glove_notes = {'Note in GloVe': [], 'GloVe Avg': []}
+# List of punctuation
+PUNCTS = "!\"#$%'()*+,-./:;<=>?@[\]^_`{|}~"
+def pad_punctuation(note):
+    # Places spaces around puncatuations so they'll be
+    # separated by a .split() method and recognized
+    # by GloVe
+    updated_list = []
+    for i in range(len(note)):
+        if note[i] in PUNCTS:
+            updated_list.extend([" ", note[i], " "])
+        else:
+            updated_list.append(note[i])
+    return ''.join(updated_list)
 
-# List of punctuation to clean from notes
-punctuation = "!\"#$%'()*+,-./:;<=>?@[\]^_`{|}~"
-empty_replacement = " " * len(punctuation)
-transtable = maketrans(punctuation, empty_replacement)
-
-# Indices of empty notes to drop
-indices_of_empty = []
+glove_notes = {
+        'Patient ID': [],
+        'Notes in GloVe': [],
+        'GloVe Sum': [],
+        'GloVe Avg': [],
+        'Admission Status': []
+    }
+glove_df = pd.DataFrame(data=glove_notes)
 
 for index, row in notes.iterrows():
     note_as_glove = []
-    if type(row['Note Result']) != str:
-        # Some notes aren't strings as expected
-        indices_of_empty.append(index)
-        row['Note Result'] = ""
-    # Quickest way to remove punctuation
-    note = str.translate(row['Note Result'], transtable)
+
+    note = pad_punctuation(row['Concatenated Notes'])
     for word in note.split():
         # If word isn't represented by glove, use 0 vector of same size
         gloved_word = vector_map.get(word.lower(), [0.0]*GLOVEd)
         note_as_glove.append(gloved_word)
-    glove_notes['Note in GloVe'].append(note_as_glove)
-    glove_notes['GloVe Avg'].append(np.average(note_as_glove, axis=0))
 
+    updated_row = {
+            'Patient ID': row['Patient ID'],
+            'Notes in GloVe': note_as_glove,
+            'GloVe Sum': np.sum(note_as_glove, axis=0),
+            'GloVe Avg': np.average(note_as_glove, axis=0),
+            'Admission Status': row['Admission Status']
+        }
+    glove_df = glove_df.append(updated_row, ignore_index=True)
 
-glove_frame = pd.DataFrame(data=glove_notes)
-merged = notes.merge(glove_frame, left_index=True, right_index=True)
+print('Saving GloVe average and Sum columns to separate file')
+#glove_df[['Patient ID', 'GloVe Sum', 'GloVe Avg', 'Admission Status']].to_csv('./Covid_Data/Concatted_Notes_GloVe_Averages_2.csv')
 
-# Drop rows with empty notes and re-sequence the index
-print("Dropping {} rows of empty notes".format(len(indices_of_empty)))
-merged = merged.drop(indices_of_empty).reset_index()
+print("Saving GloVed notes to file")
+#glove_df[['Patient ID', 'Notes in GloVe', 'Admission Status']].to_csv('./Covid_Data/Timeseries_Glove_Notes.csv')
 
-merged.to_csv('./Covid_Data/Notes_w_GloVe_and_Outcome.csv')
-
+# Refraining from padding and opting for a batch size of one
+#print('Padding GloVe\'d notes to consistent length')
+#padded_notes = {
+#        'Patient ID': [],
+#        'Padded GloVe Notes': [],
+#        'Admission Status': []
+##    }
+#padded_df = pd.DataFrame(data=padded_notes)
+## Find max length of note
+#max_length = 0
+#for index, row in glove_df.iterrows():
+#    curr_length = len(row['Notes in GloVe'])
+##    if curr_length > max_length: max_length = curr_length
+##
+#print("Max length of notes is {}".format(max_length))
+## Pad row with empty glove vectors to be same size as the max number of words in a note
+#for index, row in glove_df.iterrows():
+###    notes = row['Notes in GloVe']
+#    notes.extend([[0.0]*GLOVEd] * (max_length - len(notes)))
+#    
+#    updated_row = {
+#            'Patient ID': row['Patient ID'],
+##            'Padded GloVe Notes': notes,
+#            'Admission Status': row['Admission Status']
+#        }
+#    padded_df = padded_df.append(updated_row, ignore_index=True)
+#
+#print('Saving padded GloVe notes to file')
+#padded_df.to_csv('./Covid_Data/Time_Series_GloVe_Notes_2.csv')
