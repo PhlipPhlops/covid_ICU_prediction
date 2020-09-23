@@ -10,7 +10,7 @@ from keras.layers import Dense
 from keras.wrappers.scikit_learn import KerasClassifier
 from keras.utils import np_utils
 from sklearn.model_selection import cross_val_score, train_test_split
-from sklearn.model_selection import KFold, train_test_split
+from sklearn.model_selection import KFold
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import accuracy_score, make_scorer
 from sklearn.utils import class_weight
@@ -20,16 +20,11 @@ from custom_classification_report import classification_report
 # Constants
 KFOLD_SPLITS = 10 
 
-gloved_csv = pd.read_csv('./Covid_Data/Concatted_Notes_GloVe_Averages_300d.csv')
+gloved_csv = pd.read_csv('./Covid_Data/Concatted_Notes_BioWordVec_averages_200d.csv')
 
 # For simplicity, first we'll use the avg column as the input data
-X_raw = gloved_csv['GloVe Avg'].values
+X_raw = gloved_csv['BioWordVec Avg'].values
 Y = gloved_csv['Admission Status'].values
-
-# Convert to Binary to test
-for i in range(len(Y)):
-    if Y[i] != "ICU":
-        Y[i] = "Not ICU"
 
 # GloVe Avg column is storing arrays as strings, so they need to be unpacked
 X = []
@@ -44,18 +39,12 @@ X = np.array(X)
 encoder = LabelEncoder()
 encoder.fit(Y)
 encoded_Y = encoder.transform(Y)
-print(encoded_Y.shape)
-
-# Split, reducing training data size even further
-split = int(0.67 * len(X))
-X, X_test = X[:split], X[split:]
-encoded_Y, Y_test = encoded_Y[:split], encoded_Y[split:]
 
 def baseline_model():
     # 50 inputs -> [64 hidden nodes] -> 3 outputs
     model = Sequential()
-    model.add(Dense(50, input_dim=300, activation='relu'))
-    model.add(Dense(2, activation='softmax'))
+    model.add(Dense(100, input_dim=200, activation='relu'))
+    model.add(Dense(3, activation='softmax'))
     # Compile
     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
     return model
@@ -78,27 +67,19 @@ def classification_report_w_acc_score(y_true, y_pred):
 # Callbacks
 early_stopping = EarlyStopping(monitor='loss', patience=10)
 
-classifier = KerasClassifier(build_fn=baseline_model, epochs=1000, batch_size=5)
+classifier = KerasClassifier(build_fn=baseline_model, epochs=400, batch_size=5)
 # KFold cross-validation: partition into k bins and use k-1 as training data, 1 as testing
-#kfold = KFold(n_splits=KFOLD_SPLITS)
+kfold = KFold(n_splits=KFOLD_SPLITS)
 # Fit and evaluate model
-#results = cross_val_score(classifier, X, encoded_Y,
-#        cv=kfold, scoring=make_scorer(classification_report_w_acc_score),
-#        fit_params={'callbacks': [early_stopping]}
-#    )
-#print("Baseline: %.2f%% (stdev %.2f%%)" % (results.mean()*100, results.std()*100))
-
-# Split, testing on entirely unseen data
-classifier.fit(X, encoded_Y, callbacks=[early_stopping])
-y_pred = classifier.predict(X_test)
-print("Test data fold: {}".format(current_fold))
-classification_report_w_acc_score(Y_test, y_pred)
-
+results = cross_val_score(classifier, X, encoded_Y,
+        cv=kfold, scoring=make_scorer(classification_report_w_acc_score),
+        fit_params={'callbacks': [early_stopping]}
+    )
+print("Baseline: %.2f%% (stdev %.2f%%)" % (results.mean()*100, results.std()*100))
 # Display and save results
 print(report_df)
-REPORT_FILE = "300d_binary_split_50-3.csv"
+REPORT_FILE = "200d_biovec_100-3.csv"
 report_df.to_csv("./classification_reports/" + REPORT_FILE)
-
 
 # --- Results on non-concatted notes --- #
 ## 50 inputs -> [64 hidden nodes] -> 3 outputs

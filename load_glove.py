@@ -1,12 +1,14 @@
 import sys
 import numpy as np
-#from scipy import spatial
+from scipy import spatial
 
 # script from: https://medium.com/analytics-vidhya/basics-of-using-pre-trained-glove-vectors-in-python-d38905f356db
 vector_map = {}
 
-with open("./GloVe/glove.6B.50d.txt", 'r', encoding='utf-8') as f:
-    print("loading word vectors 50d...")
+GLOVEd = 50
+
+with open("./GloVe/glove.6B.{}d.txt".format(GLOVEd), 'r', encoding='utf-8') as f:
+    print("loading word vectors {}d...".format(GLOVEd))
     for line in f:
         values = line.split()
         word = values[0]
@@ -15,5 +17,5 @@ with open("./GloVe/glove.6B.50d.txt", 'r', encoding='utf-8') as f:
     # Done, print newline
     print("...done")
 
-#def find_closest_embeddings(embedding):
-#    return sorted(vector_map.keys(), key=lambda word: spatial.distance.euclidean(vector_map[word], embedding))
+def find_closest_embeddings(embedding):
+    return sorted(vector_map.keys(), key=lambda word: spatial.distance.euclidean(vector_map[word], embedding))
